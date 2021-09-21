@@ -384,6 +384,7 @@ class InstallAction(ActionForBuild):
             mkdir -p "$BINARY_ARCHIVES"
             cd "$TMP_ROOT$ORCHESTRA_ROOT"
             rm -f '{absolute_binary_archive_tmp_path}'
+            export XZ_OPT=--threads=0
             tar cvaf '{absolute_binary_archive_tmp_path}' --owner=0 --group=0 *
             mkdir -p '{binary_archive_parent_dir}'
             mv '{absolute_binary_archive_tmp_path}' '{binary_archive_path}'
