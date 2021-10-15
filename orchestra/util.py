@@ -20,9 +20,9 @@ def export_environment(variables: OrderedDict):
             var_name = var[1:]
             if val is not None and val != "":
                 raise UserException(f"Requested environment variable {var_name} to be unset but its value is not empty")
-            env += f"unset -v {var_name}\n"
+            env += f"unset -v {var_name};\n"
         else:
-            env += f'export {var}="{val}"\n'
+            env += f'export {var}="{val}";\n'
 
     return env
 
