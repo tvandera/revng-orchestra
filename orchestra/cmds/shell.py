@@ -4,6 +4,7 @@ import shlex
 from textwrap import dedent
 
 from loguru import logger
+from orchestra.util import export_environment
 
 from . import SubCommandParser
 from ..actions.util import get_script_output
@@ -26,10 +27,19 @@ def install_subcommand(sub_argparser: SubCommandParser):
     )
     cmd_parser.add_argument("command", nargs=argparse.REMAINDER)
 
+    cmd_parser = sub_argparser.add_subcmd(
+        "env",
+        handler=handle_env,
+        help="Print environment variables needed to execute a command for component.",
+    )
+    cmd_parser.add_argument(
+        "--component",
+        "-c",
+        help="Component name",
+    )
 
-def handle_shell(args):
+def get_script_and_env(args):
     config = Configuration(use_config_cache=args.config_cache)
-    command = args.command
 
     if not args.component:
         env = config.global_env()
@@ -49,23 +59,26 @@ def handle_shell(args):
         else:
             cd_to = os.getcwd()
 
+    return env, cd_to
+
+def handle_shell(args):
+    env, cd_to = get_script_and_env(args)
+
+    command = args.command
     if command:
         script_to_run = " ".join(shlex.quote(c) for c in command)
-        p = _run_script(
-            script_to_run,
-            environment=env,
-            strict_flags=False,
-            cwd=cd_to,
-            loglevel="DEBUG",
-        )
-        return p.returncode
+    else:
+        user_shell = get_script_output("getent passwd $(whoami) | cut -d: -f7").strip()
 
-    user_shell = get_script_output("getent passwd $(whoami) | cut -d: -f7").strip()
+        env["OLD_HOME"] = os.environ["HOME"]
+        env["HOME"] = os.path.join(os.path.dirname(__file__), "..", "support", "shell-home")
+        env["PS1_PREFIX"] = ps1_prefix
+        script_to_run = dedent(f"exec {user_shell}")
 
-    env["OLD_HOME"] = os.environ["HOME"]
-    env["HOME"] = os.path.join(os.path.dirname(__file__), "..", "support", "shell-home")
-    env["PS1_PREFIX"] = ps1_prefix
-    script = dedent(f"exec {user_shell}")
-
-    result = _run_script(script, environment=env, loglevel="DEBUG", cwd=cd_to)
+    result = _run_script(script_to_run, environment=env, loglevel="DEBUG", cwd=cd_to)
     return result.returncode
+
+def handle_env(args):
+    env, _ = get_script_and_env(args)
+    print(export_environment(env))
+    return 0
