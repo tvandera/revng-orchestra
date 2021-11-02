@@ -1,0 +1,37 @@
+package:
+  name: orchestra
+  version: 0.1
+
+source:
+  git_rev: v0.1
+  git_url: git@github.imec.be:dbt/revng-orchestra.git
+
+build:
+  number: 1
+  noarch: python
+  script: python setup.py install --single-version-externally-managed --record=record.txt
+
+requirements:
+  host:
+    - python >=3.9
+    - setuptools
+
+  run:
+    - python >=3.9
+    - loguru =0.5
+    - PyYAML =5.4
+    - fuzzywuzzy =0.18
+    - python-Levenshtein =0.12
+    - pyelftools =0.26
+    - enlighten =1.10
+    - tqdm =4.60
+    - networkx =2.5
+    - jsonschema =3.2
+    - pygraphviz =1.6
+
+test:
+  imports:
+    - orchestra
+
+about: 
+  home: https://github.com/revng/revng-orchestra
