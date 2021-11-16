@@ -1,11 +1,8 @@
 loguru~=0.5.3
 PyYAML~=5.4.1
 fuzzywuzzy~=0.18.0
-python-Levenshtein~=0.12.2
 pyelftools~=0.26
-enlighten~=1.9.0
 tqdm~=4.60.0
-graphlib-backport~=1.0.3
 networkx~=2.5.1
 jsonschema~=3.2.0
 pygraphviz==1.6.0

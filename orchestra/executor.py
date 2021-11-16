@@ -9,7 +9,6 @@ from concurrent import futures
 from itertools import permutations, product
 from typing import List, Dict
 
-import enlighten
 import networkx as nx
 import networkx.classes.filters as nxfilters
 from loguru import logger
@@ -39,9 +38,6 @@ class Executor:
 
         self._total_remaining = None
         self._current_remaining = None
-        self._stop_updating_display = False
-        self._display_manager: enlighten.Manager
-        self._display_thread: threading.Thread
 
     def run(self):
         dependency_graph = self._create_dependency_graph()
@@ -61,8 +57,6 @@ class Executor:
         self._total_remaining = dependency_graph.number_of_nodes()
         self._current_remaining = self._total_remaining
 
-        self._start_display_update()
-
         signal.signal(signal.SIGINT, self._sigint_handler)
 
         self._stop_the_world = False
@@ -76,7 +70,6 @@ class Executor:
             try:
                 done, not_done = futures.wait(self._queued_actions, return_when=futures.FIRST_COMPLETED)
             except KeyboardInterrupt:
-                self._stop_display_update()
                 os.killpg(os.getpgid(os.getpid()), signal.SIGINT)
 
             for completed_future in done:
@@ -100,8 +93,6 @@ class Executor:
                     self._toposorter.done(action)
 
         assert len(self._queued_actions) == 0 and len(self._running_actions) == 0
-
-        self._stop_display_update()
 
         return list(self._failed_actions)
 
@@ -429,46 +420,8 @@ class Executor:
         finally:
             self._running_actions.remove(action)
 
-    def _start_display_update(self):
-        self._stop_updating_display = False
-        # Display manager and status bar must be initialized in main thread
-        self._display_manager = enlighten.get_manager()
-        self._status_bar = self._display_manager.status_bar(leave=False)
-        self._display_thread = threading.Thread(target=self._update_display, name="Display updater")
-        self._display_thread.start()
-
-    def _stop_display_update(self):
-        self._stop_updating_display = True
-        while self._display_thread is not None:
-            pass
-        self._display_manager.stop()
-        sys.stdout.buffer.flush()
-        sys.stderr.buffer.flush()
-
-    def _update_display(self):
-        self._status_bar.color = "bright_white_on_lightslategray"
-        try:
-            while not self._stop_updating_display:
-                running_jobs_str = ", ".join(a.name_for_info for a in self._running_actions)
-                self._status_bar_args = {
-                    "jobs": running_jobs_str,
-                    "current": self._total_remaining - self._current_remaining,
-                    "total": self._total_remaining,
-                }
-                set_terminal_title(f"Running {running_jobs_str}")
-                self._status_bar.status_format = "[{current}/{total}] Running {jobs}"
-                self._status_bar.update(**self._status_bar_args)
-                self._status_bar.refresh()
-                time.sleep(0.1)
-        finally:
-            self._status_bar.status_format = "Done"
-            self._status_bar.refresh()
-            self._status_bar.close()
-            self._display_thread = None
-
     def _sigint_handler(self, sig, frame):
         signal.signal(signal.SIGINT, signal.SIG_DFL)
-        self._stop_display_update()
         signal.default_int_handler(signal.SIGINT, frame)
 
 
